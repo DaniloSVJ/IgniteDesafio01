@@ -31,6 +31,7 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
 
     return [];
   });
+  
 
   const addProduct = async (productId: number) => {
     try {
@@ -42,26 +43,39 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
       const { data: productResponse} = product;
       const { data: availableStock } = stock;
 
-      if (availableStock.amount < 1) {
-        throw new Error();
+   
+      if (availableStock.amount <= 0) {
+        toast.error('Quantidade solicitada fora de estoque');
+        return;
+        
       }
 
       if (productId !== productResponse.id) {
         toast.error('Erro na adição do produto');
         return;
       }
-  
+   
 
-      const productExistIncCart = cart.some(product => product.id === productId);
+      const productExistIncCart = cart.find(product => product.id === productId) as Product;
+      
+      if (productExistIncCart?.amount + 1 > availableStock.amount) {
+        toast.error('Quantidade solicitada fora de estoque');
+        return;
+      }
+
       if (!productExistIncCart) {
+       
+       
+  
         const addNewProductToCart = {
           ...productResponse,
           amount: 1,
         }
+        
 
         setCart([...cart, addNewProductToCart]);
         localStorage.setItem('@RocketShoes:cart', JSON.stringify([...cart, addNewProductToCart]))
-        await api.put(`stock/${productId}`, {amount: availableStock.amount-=1});
+        await api.put(`stock/${productId}`, {amount: availableStock.amount+=1});
         return;
       }
 
@@ -87,7 +101,7 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
         toast.error('Erro na remoção do produto');
         return;
       }
-
+      
       const removeProductFromCart = cart.filter(product => product.id !== productId);
 
       setCart(removeProductFromCart);
@@ -102,7 +116,8 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
     amount,
   }: UpdateProductAmount) => {
     try {
-      if (amount < 1) { 
+      if (amount <= 0) { 
+        toast.error('Quantidade solicitada fora de estoque');
         return;
       }
 
